@@ -337,7 +337,7 @@ public class GooglePlayAPI {
      * This function is used for fetching download url and donwload cookie,
      * rather than actual purchasing.
      */
-    private BuyResponse purchase(String packageName, int versionCode, int offerType) throws IOException {
+    public BuyResponse purchase(String packageName, int versionCode, int offerType) throws IOException {
 
 	ResponseWrapper responseWrapper = executePOSTRequest(PURCHASE_URL, new String[][] { { "ot", String.valueOf(offerType) },
 		{ "doc", packageName }, { "vc", String.valueOf(versionCode) }, });
