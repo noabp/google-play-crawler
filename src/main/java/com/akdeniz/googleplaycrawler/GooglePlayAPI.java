@@ -23,6 +23,10 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.impl.conn.SchemeRegistryFactory;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.mina.core.buffer.IoBuffer;
+import org.apache.mina.core.future.ConnectFuture;
+import org.apache.mina.core.future.WriteFuture;
+import org.apache.mina.core.session.IoSession;
 
 import com.akdeniz.googleplaycrawler.GooglePlay.AndroidAppDeliveryData;
 import com.akdeniz.googleplaycrawler.GooglePlay.AndroidCheckinRequest;
@@ -40,6 +44,14 @@ import com.akdeniz.googleplaycrawler.GooglePlay.ReviewResponse;
 import com.akdeniz.googleplaycrawler.GooglePlay.SearchResponse;
 import com.akdeniz.googleplaycrawler.GooglePlay.UploadDeviceConfigRequest;
 import com.akdeniz.googleplaycrawler.GooglePlay.UploadDeviceConfigResponse;
+import com.akdeniz.googleplaycrawler.gsf.MTalkConnector;
+import com.akdeniz.googleplaycrawler.gsf.MessageFilter;
+import com.akdeniz.googleplaycrawler.gsf.NotificationListener;
+import com.akdeniz.googleplaycrawler.gsf.GoogleServicesFramework.BindAccountResponse;
+import com.akdeniz.googleplaycrawler.gsf.GoogleServicesFramework.LoginResponse;
+import com.akdeniz.googleplaycrawler.gsf.packets.BindAccountRequestPacket;
+import com.akdeniz.googleplaycrawler.gsf.packets.HeartBeatPacket;
+import com.akdeniz.googleplaycrawler.gsf.packets.LoginRequestPacket;
 
 /**
  * This class provides
@@ -402,6 +414,104 @@ public class GooglePlayAPI {
 			{ "n", (numberOfResult == null) ? null : String.valueOf(numberOfResult) } });
 
 	return responseWrapper.getPayload().getListResponse();
+    }
+    
+    public void gcmListener(String securityToken) throws Exception {
+    	setSecurityToken(securityToken);
+    	
+    	String ac2dmAuth = loginAC2DM();
+    	
+    	MTalkConnector connector = new MTalkConnector(new NotificationListener(this));
+    	ConnectFuture connectFuture = connector.connect();
+    	connectFuture.await(TIMEOUT);
+    	if (!connectFuture.isConnected()) {
+    	    throw new IOException("Couldn't connect to GTALK server!");
+    	}
+
+    	final IoSession session = connectFuture.getSession();
+    	send(session, IoBuffer.wrap(new byte[] { 0x07 })); // connection sanity check
+    	System.out.println("Connected to server.");
+
+    	String deviceIDStr = String.valueOf(new BigInteger(getAndroidID(), 16).longValue());
+    	String securityTokenStr = String.valueOf(new BigInteger(getSecurityToken(), 16).longValue());
+    	
+    	LoginRequestPacket loginRequestPacket = new LoginRequestPacket(deviceIDStr, securityTokenStr, getAndroidID());
+    	
+    	LoginResponseFilter loginResponseFilter = new LoginResponseFilter(loginRequestPacket.getPacketID());
+    	connector.addFilter(loginResponseFilter);
+    	send(session, loginRequestPacket);
+    	LoginResponse loginResponse = loginResponseFilter.nextMessage(TIMEOUT);
+    	connector.removeFilter(loginResponseFilter);
+    	if(loginResponse==null){
+    	    throw new IllegalStateException("Login response could not be received!");
+    	} else if(loginResponse.hasError()){
+    	    throw new IllegalStateException(loginResponse.getError().getExtension(0).getMessage());
+    	}
+    	System.out.println("Autheticated.");
+
+    	BindAccountRequestPacket bindAccountRequestPacket = new BindAccountRequestPacket(getEmail(), ac2dmAuth);
+    	
+    	BindAccountResponseFilter barf = new BindAccountResponseFilter(bindAccountRequestPacket.getPacketID());
+    	connector.addFilter(barf);
+    	send(session, bindAccountRequestPacket);
+    	BindAccountResponse bindAccountResponse = barf.nextMessage(TIMEOUT);
+    	connector.removeFilter(barf);
+    	
+    	/*if(bindAccountResponse==null){
+    	    throw new IllegalStateException("Account bind response could not be received!");
+    	} else if(bindAccountResponse.hasError()){
+    	    throw new IllegalStateException(bindAccountResponse.getError().getExtension(0).getMessage());
+    	}*/
+
+    	System.out.println("Listening for notifications from server..");
+    	
+    	// send heart beat packets to keep connection up.
+    	while (true) {
+    	    send(session, new HeartBeatPacket());
+    	    Thread.sleep(30000);
+    	}
+        }
+    
+    private static void send(IoSession session, Object object) throws InterruptedException, IOException {
+    	WriteFuture writeFuture = session.write(object);
+    	writeFuture.await(TIMEOUT);
+    	if (!writeFuture.isWritten()) {
+    	    Throwable exception = writeFuture.getException();
+    	    if(exception!=null){
+    		throw new IOException("Error occured while writing!", exception);
+    	    }
+    	    throw new IOException("Error occured while writing!");
+    	}
+        }
+    
+    private static final int TIMEOUT = 10000;
+    
+    class LoginResponseFilter extends MessageFilter<LoginResponse>{
+        private String id;
+
+        public LoginResponseFilter(String id) {
+    	super(LoginResponse.class);
+    	this.id = id;
+        }
+        
+        @Override
+        protected boolean accept(LoginResponse message) {
+    	return id.equals(message.getPacketid());
+        }
+    }
+
+    class BindAccountResponseFilter extends MessageFilter<BindAccountResponse>{
+        private String id;
+
+        public BindAccountResponseFilter(String id) {
+    	super(BindAccountResponse.class);
+    	this.id = id;
+        }
+        
+        @Override
+        protected boolean accept(BindAccountResponse message) {
+    	return id.equals(message.getPacketid());
+        }
     }
 
     /* =======================Helper Functions====================== */
