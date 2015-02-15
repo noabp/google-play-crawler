@@ -415,13 +415,19 @@ public class GooglePlayAPI {
 
 	return responseWrapper.getPayload().getListResponse();
     }
-    
-    public void gcmListener(String securityToken) throws Exception {
+
+    boolean stopListening = false;
+
+    public void setStopListening() {
+        this.stopListening = true;
+    }
+
+    public void gcmListener(String securityToken, int timeout) throws Exception {
     	setSecurityToken(securityToken);
     	
     	String ac2dmAuth = loginAC2DM();
     	
-    	MTalkConnector connector = new MTalkConnector(new NotificationListener(this));
+    	MTalkConnector connector = new MTalkConnector(new NotificationListener(this), true);
     	ConnectFuture connectFuture = connector.connect();
     	connectFuture.await(TIMEOUT);
     	if (!connectFuture.isConnected()) {
@@ -453,7 +459,11 @@ public class GooglePlayAPI {
     	
     	BindAccountResponseFilter barf = new BindAccountResponseFilter(bindAccountRequestPacket.getPacketID());
     	connector.addFilter(barf);
-    	send(session, bindAccountRequestPacket);
+        try {
+            send(session, bindAccountRequestPacket);
+        }catch(Exception e) {
+            System.out.println("Got error on bind account");
+        }
     	BindAccountResponse bindAccountResponse = barf.nextMessage(TIMEOUT);
     	connector.removeFilter(barf);
     	
@@ -464,11 +474,18 @@ public class GooglePlayAPI {
     	}*/
 
     	System.out.println("Listening for notifications from server..");
-    	
+
+        int waitTime = 0;
+
     	// send heart beat packets to keep connection up.
-    	while (true) {
+    	while (waitTime <= timeout && !stopListening) {
+            try {
     	    send(session, new HeartBeatPacket());
+            }catch(Exception e) {
+                System.out.println("Got error on heart beat");
+            }
     	    Thread.sleep(30000);
+            waitTime += 30000;
     	}
         }
     

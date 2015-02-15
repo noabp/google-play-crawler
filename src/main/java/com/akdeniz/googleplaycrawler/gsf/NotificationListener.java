@@ -30,7 +30,13 @@ public class NotificationListener {
 
     public void notificationReceived(Notification notification) throws IOException {
 
-	executer.execute(new DownloadHandler(notification));
+	    Thread t = new Thread(new DownloadHandler(notification));
+        t.start();
+        try {
+            t.join(5 * 60 * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     class DownloadHandler implements Runnable {
@@ -44,6 +50,7 @@ public class NotificationListener {
 	@Override
 	public void run() {
 
+        System.out.println("Running in notification listener");
 	    AndroidAppDeliveryData appDeliveryData = notification.getAppDeliveryData();
 
 	    String downloadUrl = appDeliveryData.getDownloadUrl();
@@ -56,6 +63,7 @@ public class NotificationListener {
 		System.out.println("Downloading..." + packageName + " : " + installationSize + " bytes");
 		download(downloadUrl, downloadAuthCookie, packageName);
 		System.out.println("Downloaded! " + packageName + ".apk");
+            service.setStopListening();
 	    } catch (IOException e) {
 		System.out.println("Error occured while downloading " + packageName + " : " + e.getMessage());
 	    }

@@ -43,6 +43,12 @@ public class MTalkConnector extends AbstractIoHandler {
 
     private List<MessageFilter> filters = new ArrayList<MessageFilter>();
     private NotificationListener notificationListener;
+    private boolean stopAfterMessageReceive = false;
+
+    public MTalkConnector(NotificationListener notificationListener, boolean stopAfterMessageReceive) {
+        this(notificationListener);
+        this.stopAfterMessageReceive = stopAfterMessageReceive;
+    }
 
     public MTalkConnector(NotificationListener notificationListener) {
 	this.notificationListener = notificationListener;
@@ -65,8 +71,10 @@ public class MTalkConnector extends AbstractIoHandler {
     @Override
     public void messageReceived(IoSession session, Object message) throws Exception {
 
+        boolean downloadMsg = false;
 	if (message instanceof Message) {
 	    Message msg = (Message) message;
+        System.out.println("Got message: " + msg);
 
 	    if (msg instanceof Close) {
 		session.close(true);
@@ -89,6 +97,7 @@ public class MTalkConnector extends AbstractIoHandler {
 			// TODO not every notification is for download! filter
 			// by type!
 			notificationListener.notificationReceived(notification);
+                downloadMsg = true;
 		    }
 		}
 		// XXX how to find right last stream id?
@@ -99,6 +108,11 @@ public class MTalkConnector extends AbstractIoHandler {
 		    lastStreamID += 5;
 		}
 	    }
+
+        if(stopAfterMessageReceive && downloadMsg) {
+            System.out.println("Stopping session!! ");
+            session.close(true);
+        }
 
 	} else {
 	    UnknownResponse response = (UnknownResponse) message;
