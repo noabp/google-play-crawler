@@ -21,11 +21,17 @@ import com.akdeniz.googleplaycrawler.GooglePlay.Notification;
 public class NotificationListener {
 
     private GooglePlayAPI service;
+    private String expectedPackage;
     private ExecutorService executer;
 
+    public NotificationListener(GooglePlayAPI service, String expectedPackage) {
+	    this(service);
+        this.expectedPackage = expectedPackage;
+    }
+
     public NotificationListener(GooglePlayAPI service) {
-	this.service = service;
-	this.executer = Executors.newFixedThreadPool(5);
+        this.service = service;
+        this.executer = Executors.newFixedThreadPool(5);
     }
 
     public void notificationReceived(Notification notification) throws IOException {
@@ -63,7 +69,9 @@ public class NotificationListener {
 		System.out.println("Downloading..." + packageName + " : " + installationSize + " bytes");
 		download(downloadUrl, downloadAuthCookie, packageName);
 		System.out.println("Downloaded! " + packageName + ".apk");
-            service.setStopListening();
+            if(expectedPackage == null || expectedPackage.equals(packageName)) {
+                service.setStopListening();
+            }
 	    } catch (IOException e) {
 		System.out.println("Error occured while downloading " + packageName + " : " + e.getMessage());
 	    }

@@ -422,12 +422,12 @@ public class GooglePlayAPI {
         this.stopListening = true;
     }
 
-    public void gcmListener(String securityToken, int timeout) throws Exception {
+    public void gcmListener(String securityToken, int timeout, String packageName) throws Exception {
     	setSecurityToken(securityToken);
     	
     	String ac2dmAuth = loginAC2DM();
     	
-    	MTalkConnector connector = new MTalkConnector(new NotificationListener(this), true);
+    	MTalkConnector connector = new MTalkConnector(new NotificationListener(this, packageName), true);
     	ConnectFuture connectFuture = connector.connect();
     	connectFuture.await(TIMEOUT);
     	if (!connectFuture.isConnected()) {
