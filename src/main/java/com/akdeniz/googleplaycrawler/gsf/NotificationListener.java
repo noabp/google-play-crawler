@@ -1,9 +1,6 @@
 package com.akdeniz.googleplaycrawler.gsf;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -22,11 +19,13 @@ public class NotificationListener {
 
     private GooglePlayAPI service;
     private String expectedPackage;
+    private String dest;
     private ExecutorService executer;
 
-    public NotificationListener(GooglePlayAPI service, String expectedPackage) {
+    public NotificationListener(GooglePlayAPI service, String expectedPackage, String dest) {
 	    this(service);
         this.expectedPackage = expectedPackage;
+        this.dest = dest;
     }
 
     public NotificationListener(GooglePlayAPI service) {
@@ -73,7 +72,7 @@ public class NotificationListener {
                 service.setStopListening();
             }
 	    } catch (IOException e) {
-		System.out.println("Error occured while downloading " + packageName + " : " + e.getMessage());
+            e.printStackTrace();
 	    }
 
 	}
@@ -83,7 +82,8 @@ public class NotificationListener {
 	    InputStream downloadStream = service.executeDownload(downloadUrl, downloadAuthCookie.getName() + "="
 		    + downloadAuthCookie.getValue());
 
-	    FileOutputStream outputStream = new FileOutputStream(packageName + ".apk");
+        System.out.println("Saving app to: " + new File(dest + File.separator + packageName + ".apk").getAbsolutePath());
+	    FileOutputStream outputStream = new FileOutputStream(dest + File.separator +packageName + ".apk");
 
 	    byte buffer[] = new byte[8192];
 	    for (int k = 0; (k = downloadStream.read(buffer)) != -1;) {

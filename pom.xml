@@ -4,7 +4,7 @@
 
 	<groupId>com.akdeniz</groupId>
 	<artifactId>googleplaycrawler</artifactId>
-	<version>0.6-lacoon</version>
+	<version>0.7-lacoon</version>
 	<packaging>jar</packaging>
 
 	<name>Google Play Crawler</name>
@@ -87,8 +87,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.1</version>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<source>1.8</source>
+					<target>1.8</target>
 					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>

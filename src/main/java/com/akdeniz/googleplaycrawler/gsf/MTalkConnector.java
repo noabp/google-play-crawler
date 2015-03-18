@@ -62,6 +62,10 @@ public class MTalkConnector extends AbstractIoHandler {
 	return connector.connect(new InetSocketAddress(HOSTNAME, PORT));
     }
 
+    public void dispose() {
+        connector.dispose();
+    }
+
     @Override
     public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
 	cause.printStackTrace();
@@ -108,11 +112,6 @@ public class MTalkConnector extends AbstractIoHandler {
 		    lastStreamID += 5;
 		}
 	    }
-
-        if(stopAfterMessageReceive && downloadMsg) {
-            System.out.println("Stopping session!! ");
-            session.close(true);
-        }
 
 	} else {
 	    UnknownResponse response = (UnknownResponse) message;
